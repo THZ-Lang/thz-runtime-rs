@@ -1,17 +1,17 @@
-﻿//! WebAssembly (WASM) Bridge para THZ-LANG Engine
+//! WebAssembly (WASM) Bridge para THZ-LANG Engine
 //!
-//! Permite execuÃ§Ã£o do motor de regras de negÃ³cio, aritmÃ©tica exata,
-//! embeddings semÃ¢nticos e validaÃ§Ãµes fiscais diretamente no navegador ou Edge Workers.
+//! Permite execução do motor de regras de negócio, aritmética exata,
+//! embeddings semânticos e validações fiscais diretamente no navegador ou Edge Workers.
 
 use crate::ml::ThzEmbeddingEngine;
 use crate::simd_math;
 use std::ffi::{CStr, CString};
 use std::os::raw::c_char;
 
-/// Retorna a versÃ£o oficial do motor WASM
+/// Retorna a versão oficial do motor WASM
 #[no_mangle]
 pub extern "C" fn thz_wasm_versao() -> *mut c_char {
-    CString::new("﻿0.4.0-WASM").unwrap().into_raw()
+    CString::new("0.4.0-WASM").unwrap().into_raw()
 }
 
 /// Calcula similaridade de cosseno diretamente no ambiente WASM
@@ -25,7 +25,7 @@ pub extern "C" fn thz_wasm_similaridade_cosseno(a_ptr: *const f32, b_ptr: *const
     simd_math::similaridade_cosseno(a, b)
 }
 
-/// Gera embeddings determinÃ­sticos on-device para uso em Web / SPA
+/// Gera embeddings determinísticos on-device para uso em Web / SPA
 #[no_mangle]
 pub extern "C" fn thz_wasm_gerar_embedding(texto: *const c_char, dim: usize, out_ptr: *mut f32) -> i32 {
     if texto.is_null() || out_ptr.is_null() || dim == 0 {
@@ -41,4 +41,3 @@ pub extern "C" fn thz_wasm_gerar_embedding(texto: *const c_char, dim: usize, out
     }
     1
 }
-
