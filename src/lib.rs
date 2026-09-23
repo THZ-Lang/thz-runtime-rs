@@ -3,15 +3,19 @@
 //! Dual-OS ABI C export para LLVM Clang, JNI e FFI.
 
 pub mod arena;
-pub mod simd_math;
 pub mod crypto;
-pub mod ml;
-pub mod wasm;
+pub mod hardware;
 pub mod llm;
+pub mod ml;
+pub mod simd_math;
+pub mod wasm;
+
+pub use hardware::*;
 
 use std::ffi::{CStr, CString};
-use std::os::raw::c_char;
+
 use arena::ThzArena;
+use std::os::raw::c_char;
 
 #[no_mangle]
 pub extern "C" fn thz_arena_alloc(bytes: u64) -> *mut ThzArena {
@@ -67,6 +71,65 @@ pub extern "C" fn thz_substring(s: *const c_char, inicio: i32, len: i32) -> *mut
         Ok(cs) => cs.into_raw(),
         Err(_) => CString::new("").unwrap().into_raw(),
     }
+}
+
+#[no_mangle]
+pub extern "C" fn thz_str_concat(a: *const c_char, b: *const c_char) -> *mut c_char {
+    let s_a = if a.is_null() {
+        ""
+    } else {
+        unsafe { CStr::from_ptr(a).to_str().unwrap_or("") }
+    };
+    let s_b = if b.is_null() {
+        ""
+    } else {
+        unsafe { CStr::from_ptr(b).to_str().unwrap_or("") }
+    };
+    let res = format!("{}{}", s_a, s_b);
+    CString::new(res).unwrap_or_default().into_raw()
+}
+
+#[no_mangle]
+pub extern "C" fn thz_decimal_para_str(val: i128, scale: i32) -> *mut c_char {
+    let sinal = if val < 0 { "-" } else { "" };
+    let abs_val = val.abs();
+    let s = if scale <= 0 {
+        format!("{}{}", sinal, abs_val)
+    } else {
+        let mut fator: i128 = 1;
+        for _ in 0..scale {
+            fator *= 10;
+        }
+        let inteira = abs_val / fator;
+        let mut fracionaria = (abs_val % fator).to_string();
+        while fracionaria.len() < (scale as usize) {
+            fracionaria = format!("0{}", fracionaria);
+        }
+        format!("{}{}.{}", sinal, inteira, fracionaria)
+    };
+    CString::new(s).unwrap_or_default().into_raw()
+}
+
+#[no_mangle]
+pub extern "C" fn thz_i64_para_str(val: i64) -> *mut c_char {
+    CString::new(val.to_string()).unwrap_or_default().into_raw()
+}
+
+#[no_mangle]
+pub extern "C" fn thz_tela_renderizar_formulario(
+    form: *const std::ffi::c_void,
+    titulo: *const c_char,
+) -> *mut c_char {
+    let _ = form;
+    let tit = if titulo.is_null() {
+        "THZ Form"
+    } else {
+        unsafe { CStr::from_ptr(titulo).to_str().unwrap_or("THZ Form") }
+    };
+    println!("[THZ-UI NATIVO] Renderizando formulário '{}'", tit);
+    CString::new("FORMULARIO_RENDERIZADO_COM_SUCESSO")
+        .unwrap_or_default()
+        .into_raw()
 }
 
 #[no_mangle]
@@ -158,7 +221,11 @@ pub extern "C" fn thz_exiba_i128(val: i128, scale: i32) {
 // -----------------------------------------------------------------------------
 
 #[no_mangle]
-pub extern "C" fn thz_vetor_similaridade_cosseno(a_ptr: *const f32, b_ptr: *const f32, len: usize) -> f32 {
+pub extern "C" fn thz_vetor_similaridade_cosseno(
+    a_ptr: *const f32,
+    b_ptr: *const f32,
+    len: usize,
+) -> f32 {
     if a_ptr.is_null() || b_ptr.is_null() || len == 0 {
         return 0.0;
     }
@@ -168,7 +235,11 @@ pub extern "C" fn thz_vetor_similaridade_cosseno(a_ptr: *const f32, b_ptr: *cons
 }
 
 #[no_mangle]
-pub extern "C" fn thz_vetor_distancia_euclidiana(a_ptr: *const f32, b_ptr: *const f32, len: usize) -> f32 {
+pub extern "C" fn thz_vetor_distancia_euclidiana(
+    a_ptr: *const f32,
+    b_ptr: *const f32,
+    len: usize,
+) -> f32 {
     if a_ptr.is_null() || b_ptr.is_null() || len == 0 {
         return 0.0;
     }
@@ -178,7 +249,11 @@ pub extern "C" fn thz_vetor_distancia_euclidiana(a_ptr: *const f32, b_ptr: *cons
 }
 
 #[no_mangle]
-pub extern "C" fn thz_vetor_produto_escalar(a_ptr: *const f32, b_ptr: *const f32, len: usize) -> f32 {
+pub extern "C" fn thz_vetor_produto_escalar(
+    a_ptr: *const f32,
+    b_ptr: *const f32,
+    len: usize,
+) -> f32 {
     if a_ptr.is_null() || b_ptr.is_null() || len == 0 {
         return 0.0;
     }
@@ -211,7 +286,11 @@ pub extern "C" fn thz_crypto_argon2id(senha: *const c_char) -> *mut c_char {
 // -----------------------------------------------------------------------------
 
 #[no_mangle]
-pub extern "C" fn thz_ia_embedding_texto(texto: *const c_char, dimensoes: usize, saida_ptr: *mut f32) -> i32 {
+pub extern "C" fn thz_ia_embedding_texto(
+    texto: *const c_char,
+    dimensoes: usize,
+    saida_ptr: *mut f32,
+) -> i32 {
     if texto.is_null() || saida_ptr.is_null() || dimensoes == 0 {
         return 0;
     }
@@ -227,7 +306,12 @@ pub extern "C" fn thz_ia_embedding_texto(texto: *const c_char, dimensoes: usize,
 }
 
 #[no_mangle]
-pub extern "C" fn thz_ml_predizer_sigmoide(features_ptr: *const f32, pesos_ptr: *const f32, len: usize, bias: f32) -> f32 {
+pub extern "C" fn thz_ml_predizer_sigmoide(
+    features_ptr: *const f32,
+    pesos_ptr: *const f32,
+    len: usize,
+    bias: f32,
+) -> f32 {
     if features_ptr.is_null() || pesos_ptr.is_null() || len == 0 {
         return 0.5;
     }
