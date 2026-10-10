@@ -11,7 +11,7 @@ use std::os::raw::c_char;
 /// Retorna a versão oficial do motor WASM
 #[no_mangle]
 pub extern "C" fn thz_wasm_versao() -> *mut c_char {
-    CString::new("0.4.0-WASM").unwrap().into_raw()
+    CString::new("0.5.0-WASM").unwrap().into_raw()
 }
 
 /// Calcula similaridade de cosseno diretamente no ambiente WASM
