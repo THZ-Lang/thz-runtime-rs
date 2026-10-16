@@ -8,6 +8,7 @@ pub mod hardware;
 pub mod llm;
 pub mod ml;
 pub mod simd_math;
+pub mod tui;
 pub mod wasm;
 
 pub use hardware::*;
@@ -326,6 +327,69 @@ pub extern "C" fn thz_liberar_str(s: *mut c_char) {
     if !s.is_null() {
         unsafe {
             let _ = CString::from_raw(s);
+        }
+    }
+}
+
+// -----------------------------------------------------------------------------
+// FFI: Terminal User Interface (TUI) Nativo
+// -----------------------------------------------------------------------------
+
+#[no_mangle]
+pub extern "C" fn thz_tui_create(width: u32, height: u32) -> *mut tui::ThzNativeTui {
+    Box::into_raw(Box::new(tui::ThzNativeTui::new(width as usize, height as usize)))
+}
+
+#[no_mangle]
+pub extern "C" fn thz_tui_draw_box(
+    tui_ptr: *mut tui::ThzNativeTui,
+    x: u32,
+    y: u32,
+    w: u32,
+    h: u32,
+    title: *const c_char,
+) {
+    if tui_ptr.is_null() { return; }
+    let tui = unsafe { &mut *tui_ptr };
+    let t = if !title.is_null() {
+        unsafe { CStr::from_ptr(title).to_str().ok() }
+    } else {
+        None
+    };
+    tui.draw_box(x as usize, y as usize, w as usize, h as usize, t);
+}
+
+#[no_mangle]
+pub extern "C" fn thz_tui_draw_progress(
+    tui_ptr: *mut tui::ThzNativeTui,
+    x: u32,
+    y: u32,
+    w: u32,
+    pct: f64,
+) {
+    if tui_ptr.is_null() { return; }
+    let tui = unsafe { &mut *tui_ptr };
+    tui.draw_progress(x as usize, y as usize, w as usize, pct);
+}
+
+#[no_mangle]
+pub extern "C" fn thz_tui_render(tui_ptr: *mut tui::ThzNativeTui) -> *mut c_char {
+    if tui_ptr.is_null() {
+        return std::ptr::null_mut();
+    }
+    let tui = unsafe { &*tui_ptr };
+    let rendered = tui.render_to_string();
+    match CString::new(rendered) {
+        Ok(c) => c.into_raw(),
+        Err(_) => std::ptr::null_mut(),
+    }
+}
+
+#[no_mangle]
+pub extern "C" fn thz_tui_free(tui_ptr: *mut tui::ThzNativeTui) {
+    if !tui_ptr.is_null() {
+        unsafe {
+            let _ = Box::from_raw(tui_ptr);
         }
     }
 }
